@@ -6,7 +6,6 @@ package com.uchicom.automaton;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.GraphicsEnvironment;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
@@ -14,14 +13,11 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.io.IOException;
 
 import javax.swing.Action;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JDialog;
-import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -124,8 +120,9 @@ public class ProgramView extends JFrame implements Runnable {
      * コンポーネント初期化
      */
     public void initComponent() {
+        
         //アイコン
-        setIconImage(new ImageIcon("./icon.png").getImage());
+        setIconImage(new ImageIcon(getClass().getClassLoader().getResource("com/uchicom/automaton/icon.png")).getImage());
         //メニュー設定
         JMenuBar menuBar = new JMenuBar();
         JMenu menu = new JMenu("ヘルプ");
@@ -171,72 +168,134 @@ public class ProgramView extends JFrame implements Runnable {
         startTime = 0;
     }
     
+    private PointerInfo pressPointerInfo = null;
+    long pressTime;
+    boolean alive;
     /**
-     * 
+     * 記録開始
      */
-    public void log() {
+    public void startLog() {
+        alive = true;
         long now = System.currentTimeMillis();
         final JFrame frame = new JFrame();
-        frame.setAlwaysOnTop(true);
         frame.setUndecorated(true);
-        JLabel label = new JLabel("a");
-        label.setOpaque(true);
-        label.setBackground(new Color(0x10000000, true));
-        
-        frame.getContentPane().add(label);
-        frame.setBackground(new Color(0x1, true));
-        
-        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        
-        frame.setBounds(env.getMaximumWindowBounds());
-        
+        frame.setBackground(new Color(0x01010101, true));
+        frame.setAlwaysOnTop(true);
+
+
+        frame.pack();
         frame.setVisible(true);
-        
         frame.addMouseListener(new MouseListener() {
 
             @Override
             public void mouseClicked(MouseEvent arg0) {
                 // TODO Auto-generated method stub
-                if (arg0.getClickCount() == 2) {
-                    frame.dispose();
-                    System.out.println("2");
-                } else if (arg0.getClickCount() == 1) {
-                    frame.setVisible(false);
-                    robot.mousePress(InputEvent.BUTTON1_MASK);
-                    frame.setVisible(true);
-                    System.out.println("1");
-                } else {
-
-                    System.out.println(arg0.getClickCount());
+                System.out.println(arg0);
+                frame.setVisible(false);
+                if (pressTime < 0) {
+                    if (arg0.getClickCount() == 1) {
+                        switch (arg0.getButton()) {
+                        case MouseEvent.BUTTON1:
+                            robot.mousePress(InputEvent.BUTTON1_MASK);
+                            robot.delay(20);
+                            robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                            break;
+                        case MouseEvent.BUTTON2:
+                            robot.mousePress(InputEvent.BUTTON2_MASK);
+                            robot.delay(20);
+                            robot.mouseRelease(InputEvent.BUTTON2_MASK);
+                            break;
+                        case MouseEvent.BUTTON3:
+                            robot.mousePress(InputEvent.BUTTON3_MASK);
+                            robot.delay(20);
+                            robot.mouseRelease(InputEvent.BUTTON3_MASK);
+                            break;
+                            default:
+                        }
+                            
+                    } else if (arg0.getClickCount()  == 2) {
+                        robot.mousePress(InputEvent.BUTTON1_MASK);
+                        robot.delay(10);
+                        robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                        robot.delay(10);
+                        robot.mousePress(InputEvent.BUTTON1_MASK);
+                        robot.delay(10);
+                        robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                    }
                 }
-                    
+                frame.setVisible(true);
+                frame.requestFocus();
             }
 
             @Override
             public void mouseEntered(MouseEvent arg0) {
-                // TODO Auto-generated method stub
                 
             }
 
             @Override
             public void mouseExited(MouseEvent arg0) {
-                // TODO Auto-generated method stub
                 
             }
 
             @Override
             public void mousePressed(MouseEvent arg0) {
-                // TODO Auto-generated method stub
-                
+                pressPointerInfo = MouseInfo.getPointerInfo();
+                pressTime = System.currentTimeMillis();
+//                
             }
 
             @Override
             public void mouseReleased(MouseEvent arg0) {
-                // TODO Auto-generated method stub
+                if (pressTime > 0) {
+                    Point before = pressPointerInfo.getLocation();
+                    Point now = MouseInfo.getPointerInfo().getLocation();
+                    if ((before.x - now.x) * (before.x - now.x) + (before.y - now.y) * (before.y - now.y) > 10) {
+                        System.out.println("動いてる");
+                        frame.setVisible(false);
+                        robot.mouseMove(before.x, before.y);
+                        robot.mousePress(InputEvent.BUTTON1_MASK);
+                        robot.delay(20);
+                        robot.mouseMove(now.x, now.y);
+                        robot.delay(20);
+                        robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                        frame.setVisible(true);
+                        frame.requestFocus();
+                        arg0.consume();
+                        pressTime = -1;
+                    } else {
+
+                    pressTime = -1;
+                    
+                }
+                }
                 
             }
             
         });
+
+        Thread thread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                while (alive) {
+                    if (frame.isVisible()) {
+                    PointerInfo pointerInfo = MouseInfo.getPointerInfo();
+                    Thread.sleep(10);
+                    
+                    frame.setBounds(pointerInfo.getLocation().x - 5, pointerInfo.getLocation().y - 5, 10, 10);
+                    }
+                }
+                frame.dispose();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            
+        });
+        thread.start();
+        
+        
         Point point = getLocationOnScreen();
         if (startTime > 0) {
             textArea.setText(textArea.getText() + "\nS:" + (now - startTime));
@@ -254,7 +313,15 @@ public class ProgramView extends JFrame implements Runnable {
     }
     
     /**
-     * 実行
+     * 記録停止
+     */
+    public void stopLog() {
+        alive = false;
+       
+    }
+    
+    /**
+     * 自動実行
      */
     public void exec() {
         bStop = false;
@@ -266,7 +333,7 @@ public class ProgramView extends JFrame implements Runnable {
     }
     
     /**
-     * 停止
+     * 自動実行停止
      */
     public void stop() {
         bStop = true;
@@ -282,6 +349,13 @@ public class ProgramView extends JFrame implements Runnable {
         if (thread != null) {
             stop();
         }
+    }
+    
+    /**
+     * テキストデータの中身確認
+     */
+    public void validate() {
+        
     }
 
     /* (non-Javadoc)
@@ -427,48 +501,5 @@ public class ProgramView extends JFrame implements Runnable {
         execButton.getAction().putValue(Action.NAME, ExecAction.EXEC);
     }
     
-    /**
-     * ヘルプ
-     */
-    public void help() {
-        try {
-            //windowsはexplorer
-            //maxはopen
-            //linuxはfirefoxとか。。既定のはどうやって起動するんだか。
-            Process exec = Runtime.getRuntime().exec("explorer http://www.toukei.info");
-            if (exec.exitValue() != 0) {
-              //エラーの場合は普通に画面を表示する。
-                JDialog dialog = new JDialog(this, "ヘルプ");
-                JEditorPane pane = new JEditorPane();
-                pane.setContentType("text/html");
-                try {
-                    pane.setPage("http://www.toukei.info");
-                } catch (IOException ioe) {
-                    ioe.printStackTrace();
-                    //それでもエラーの場合はURLを見てくれと表示する。
-                    
-                }
-                dialog.add(new JScrollPane(pane));
-                dialog.pack();
-                dialog.setVisible(true);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            //エラーの場合は普通に画面を表示する。
-            JDialog dialog = new JDialog(this, "ヘルプ");
-            JEditorPane pane = new JEditorPane();
-            pane.setContentType("text/html");
-            try {
-                pane.setPage("http://www.toukei.info");
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-                //それでもエラーの場合はURLを見てくれと表示する。
-                
-            }
-            dialog.add(new JScrollPane(pane));
-            dialog.pack();
-            dialog.setVisible(true);
-        }
-    }
     
 }

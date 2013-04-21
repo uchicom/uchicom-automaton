@@ -15,13 +15,15 @@ import com.uchicom.automaton.ProgramView;
  */
 public class LogAction extends AbstractAction {
 
+    public static final String START = "記録開始";
+    public static final String STOP = "記録停止";
     /**
      * 
      */
     private static final long serialVersionUID = 1L;
     private ProgramView mouseFrame;
     public LogAction(ProgramView mouseFrame) {
-        putValue(NAME, "クリック");
+        putValue(NAME, START);
         this.mouseFrame = mouseFrame;
     }
     /* (non-Javadoc)
@@ -29,7 +31,7 @@ public class LogAction extends AbstractAction {
      */
     @Override
     public void actionPerformed(ActionEvent arg0) {
-        mouseFrame.log();
+        mouseFrame.startLog();
     }
 
 }
