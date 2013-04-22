@@ -6,13 +6,18 @@ package com.uchicom.automaton;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import javax.swing.Action;
 import javax.swing.ImageIcon;
@@ -23,6 +28,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -84,6 +90,12 @@ public class ProgramView extends JFrame implements Runnable {
     private static final String KEY_PRESS = "KP";
     /** キー開放を表す文字列 */
     private static final String KEY_RELEASE = "KR";
+    
+    /** Execをあらわす文字列 */
+    private static final String EXECUTE = "E";
+    
+    /** ブラウザを起動する文字列 */
+    private static final String BROWSE = "B";
     
     private Robot robot;
     private boolean bStop;
@@ -368,7 +380,10 @@ public class ProgramView extends JFrame implements Runnable {
             String[] lines = textArea.getText().split("\n");
             for (String value : lines) {
                 if (bStop) break LABEL0;
-                String[] command = value.split(":");
+                String[] command = new String[2];
+                int colonIndex = value.indexOf(':');
+                command[0] = value.substring(0, colonIndex);
+                command[1] = value.substring(colonIndex + 1);
                 if (CLICK.equals(command[0]) || CLICK_BUTTON1.equals(command[0])) {
                     //マウスボタン1クリック
                     String[] location = command[1].split(",");
@@ -465,18 +480,37 @@ public class ProgramView extends JFrame implements Runnable {
                 } else if (KEY.equals(command[0])) {
                     //キー押下・開放
                     for (char ch : command[1].toCharArray()) {
-                        robot.keyPress(ch);
-                        robot.keyRelease(ch);
+                        robot.keyPress(ch - 'a' + KeyEvent.VK_A);
+                        robot.keyRelease(ch - 'a' + KeyEvent.VK_A);
                     }
                 } else if (KEY_PRESS.equals(command[0])) {
                     //キー押下
                     for (char ch : command[1].toCharArray()) {
-                        robot.keyPress(ch);
+                        robot.keyPress(ch - 'a' + KeyEvent.VK_A);
                     }
                 } else if (KEY_RELEASE.equals(command[0])) {
                     //キー開放
                     for (char ch : command[1].toCharArray()) {
-                        robot.keyRelease(ch);
+                        robot.keyRelease(ch - 'a' + KeyEvent.VK_A);
+                    }
+                } else if (EXECUTE.equals(command[0])) {
+                    try {
+                        Process process = Runtime.getRuntime().exec(command[1]);
+//                        process.waitFor();
+//                        System.out.println(process.exitValue());
+                    } catch (IOException e) {
+                        JOptionPane.showMessageDialog(this, e.getMessage());
+//                    } catch (InterruptedException e) {
+//                        JOptionPane.showMessageDialog(this, e.getMessage());
+                    }
+                } else if (BROWSE.equals(command[0])) {
+                    try {
+                        Desktop desktop = Desktop.getDesktop();
+                        desktop.browse(new URI(command[1]));
+                    } catch (URISyntaxException e) {
+                        JOptionPane.showMessageDialog(this, e.getMessage());
+                    } catch (IOException e) {
+                        JOptionPane.showMessageDialog(this, e.getMessage());
                     }
                 } else {
                     //他のコマンドはエラー
