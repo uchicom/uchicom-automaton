@@ -3,6 +3,7 @@
  */
 package com.uchicom.automaton;
 
+
 /**
  * @author uchicom: Shigeki Uchiyama
  *

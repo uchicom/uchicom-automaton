@@ -85,14 +85,13 @@ public class ProgramView extends JFrame implements Runnable {
     /** キー開放を表す文字列 */
     private static final String KEY_RELEASE = "KR";
     
-    
     private Robot robot;
     private boolean bStop;
     private long startTime;
     /**
      * 
      */
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     /** コマンドテキストエリア */
     private JTextArea textArea = new JTextArea();
@@ -101,10 +100,9 @@ public class ProgramView extends JFrame implements Runnable {
     /** 実行間隔テキストフィールド */
     private JTextField textField = new JTextField();
     /** クリックボタン */
-    JButton logButton = new JButton(new LogAction(this));
-    
-    JButton execButton = new JButton(new ExecAction(this));
-    JButton clearButton = new JButton(new ClearAction(this));
+    JButton logButton;
+    JButton execButton;
+    JButton clearButton;
     
     Thread thread;
     
@@ -120,6 +118,12 @@ public class ProgramView extends JFrame implements Runnable {
      * コンポーネント初期化
      */
     public void initComponent() {
+        LogAction logAction = new LogAction(this);
+        logButton = new JButton(logAction);
+        ExecAction execAction = new ExecAction(this);
+        execButton = new JButton(execAction);
+        ClearAction clearAction = new ClearAction(this);
+        clearButton = new JButton(clearAction);
         
         //アイコン
         setIconImage(new ImageIcon(getClass().getClassLoader().getResource("com/uchicom/automaton/icon.png")).getImage());
@@ -140,7 +144,7 @@ public class ProgramView extends JFrame implements Runnable {
         southPanel.add(new JLabel("繰り返し実行:"));
         checkBox.setSelected(true);
         southPanel.add(checkBox);
-        southPanel.add(new JLabel("実行間隔:"));
+        southPanel.add(new JLabel("実行間隔[ms]:"));
         textField.setText("60000");
         southPanel.add(textField);
         
@@ -171,17 +175,16 @@ public class ProgramView extends JFrame implements Runnable {
     private PointerInfo pressPointerInfo = null;
     long pressTime;
     boolean alive;
+    boolean busy;
     /**
      * 記録開始
      */
     public void startLog() {
         alive = true;
-        long now = System.currentTimeMillis();
         final JFrame frame = new JFrame();
         frame.setUndecorated(true);
         frame.setBackground(new Color(0x01010101, true));
         frame.setAlwaysOnTop(true);
-
 
         frame.pack();
         frame.setVisible(true);
@@ -189,38 +192,23 @@ public class ProgramView extends JFrame implements Runnable {
 
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                // TODO Auto-generated method stub
                 System.out.println(arg0);
                 frame.setVisible(false);
+                long now = System.currentTimeMillis();
+                Point point = MouseInfo.getPointerInfo().getLocation();
                 if (pressTime < 0) {
-                    if (arg0.getClickCount() == 1) {
-                        switch (arg0.getButton()) {
-                        case MouseEvent.BUTTON1:
-                            robot.mousePress(InputEvent.BUTTON1_MASK);
-                            robot.delay(20);
-                            robot.mouseRelease(InputEvent.BUTTON1_MASK);
-                            break;
-                        case MouseEvent.BUTTON2:
-                            robot.mousePress(InputEvent.BUTTON2_MASK);
-                            robot.delay(20);
-                            robot.mouseRelease(InputEvent.BUTTON2_MASK);
-                            break;
-                        case MouseEvent.BUTTON3:
-                            robot.mousePress(InputEvent.BUTTON3_MASK);
-                            robot.delay(20);
-                            robot.mouseRelease(InputEvent.BUTTON3_MASK);
-                            break;
-                            default:
+                    //クリック処理
+                    click(arg0.getButton(), arg0.getClickCount());
+                    if (!ProgramView.this.contains(point)) {
+                        //テキストに出力
+                        if (startTime > 0) {
+                            textArea.setText(textArea.getText() + "\nS:" + (now - startTime));
+                            startTime = now;
+                            textArea.setText(textArea.getText() + "\nC" + arg0.getButton() +":" + point.x + "," + point.y);
+                        } else {
+                            startTime = now;
+                            textArea.setText("C" + arg0.getButton() +":" + point.x + "," + point.y);
                         }
-                            
-                    } else if (arg0.getClickCount()  == 2) {
-                        robot.mousePress(InputEvent.BUTTON1_MASK);
-                        robot.delay(10);
-                        robot.mouseRelease(InputEvent.BUTTON1_MASK);
-                        robot.delay(10);
-                        robot.mousePress(InputEvent.BUTTON1_MASK);
-                        robot.delay(10);
-                        robot.mouseRelease(InputEvent.BUTTON1_MASK);
                     }
                 }
                 frame.setVisible(true);
@@ -250,7 +238,6 @@ public class ProgramView extends JFrame implements Runnable {
                     Point before = pressPointerInfo.getLocation();
                     Point now = MouseInfo.getPointerInfo().getLocation();
                     if ((before.x - now.x) * (before.x - now.x) + (before.y - now.y) * (before.y - now.y) > 10) {
-                        System.out.println("動いてる");
                         frame.setVisible(false);
                         robot.mouseMove(before.x, before.y);
                         robot.mousePress(InputEvent.BUTTON1_MASK);
@@ -277,39 +264,56 @@ public class ProgramView extends JFrame implements Runnable {
 
             @Override
             public void run() {
+                execButton.setEnabled(false);
+                textArea.setEnabled(false);
+                clearButton.setEnabled(false);
                 try {
-                while (alive) {
-                    if (frame.isVisible()) {
-                    PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-                    Thread.sleep(10);
-                    
-                    frame.setBounds(pointerInfo.getLocation().x - 5, pointerInfo.getLocation().y - 5, 10, 10);
+                    while (alive) {
+                        if (frame.isVisible()) {
+                            PointerInfo pointerInfo = MouseInfo.getPointerInfo();
+                            frame.setBounds(pointerInfo.getLocation().x - 3, pointerInfo.getLocation().y - 3, 10, 10);
+                        }
+                        Thread.sleep(1);
                     }
-                }
-                frame.dispose();
+                    frame.dispose();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+
+                logButton.getAction().putValue(Action.NAME, LogAction.START);
+                logButton.setEnabled(true);
+                execButton.setEnabled(true);
+                textArea.setEnabled(true);
+                clearButton.setEnabled(true);
             }
             
         });
         thread.start();
         
-        
-        Point point = getLocationOnScreen();
-        if (startTime > 0) {
-            textArea.setText(textArea.getText() + "\nS:" + (now - startTime));
-            startTime = now;
-            textArea.setText(textArea.getText() + "\nC:" + (point.x - 1) + "," + (point.y - 1));
-        } else {
-            startTime = now;
-            textArea.setText("C:" + (point.x - 1) + "," + (point.y - 1));
+    }
+    
+    public void textOut(int button, int clickCount) {
+    }
+    /**
+     * クリック処理
+     */
+    public void click(int button, int clickCount) {
+        int button2 = 0x20 >> button;
+        for (int i = 0; i < clickCount; i++) {
+            if (i > 0) {
+                robot.delay(20);
+            }
+            robot.mousePress(button2);
+            robot.delay(20);
+            robot.mouseRelease(button2);
         }
-        PointerInfo info = MouseInfo.getPointerInfo();
-        robot.mouseMove(point.x - 1, point.y - 1);
-        robot.mousePress(InputEvent.BUTTON1_MASK);
-        robot.mouseRelease(InputEvent.BUTTON1_MASK);
-        robot.mouseMove(info.getLocation().x, info.getLocation().y);
+    }
+    
+    /**
+     * ドラッグアンドドロップ処理
+     */
+    public void dragAndDrop() {
+        
     }
     
     /**
@@ -351,12 +355,6 @@ public class ProgramView extends JFrame implements Runnable {
         }
     }
     
-    /**
-     * テキストデータの中身確認
-     */
-    public void validate() {
-        
-    }
 
     /* (non-Javadoc)
      * @see java.lang.Runnable#run()

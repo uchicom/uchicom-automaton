@@ -31,7 +31,14 @@ public class LogAction extends AbstractAction {
      */
     @Override
     public void actionPerformed(ActionEvent arg0) {
-        mouseFrame.startLog();
+        setEnabled(false);
+        if (START.equals(getValue(NAME))) {
+            putValue(NAME, STOP);
+            mouseFrame.startLog();
+            setEnabled(true);
+        } else {
+            mouseFrame.stopLog();
+        }
     }
 
 }

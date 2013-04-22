@@ -38,6 +38,7 @@ public class ExecAction extends AbstractAction {
             mouseFrame.exec();
         } else {
             mouseFrame.stop();
+            
         }
     }
 
